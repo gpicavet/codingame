@@ -1,6 +1,9 @@
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Simulated Annealing using 2-opt heuristic
+ */
 class Player {
 
     Point[] points;
@@ -18,7 +21,7 @@ class Player {
         distTable = new float[points.length][points.length];
         for(int i=0; i<points.length; i++) {
             for(int j=0; j<i; j++) {
-                float d=(float)Math.sqrt(dist2(i,j));
+                float d=dist(i,j);
                 distTable[i][j]=d;
                 distTable[j][i]=d;
             }
@@ -26,45 +29,48 @@ class Player {
         }
     }
 
-    void move(int i, int j) {
+    float dist(int i0, int i1) {
+            Point p0 = points[i0];
+            Point p1 = points[i1];
+            int dx = p0.x-p1.x;
+            int dy = p0.y-p1.y;
+            return (float)Math.sqrt(dx*dx+dy*dy);
+    }
 
+    float diffEval2opt(int i, int j) {
+        //2-opt diff
+        float diff=0;
+        diff -= distTable[path[i]][path[i+1]];
+        diff -= distTable[path[j]][path[j+1]];
+        diff += distTable[path[i]][path[j]];
+        diff += distTable[path[i+1]][path[j+1]];
+
+        return diff;
+
+    }
+
+    void move2opt(int i, int j) {
+        //2-opt : reconnecting by switching points
         for(int k=0; k<(j-i)/2; k++) {
             int tmp = path[i+1+k];
             path[i+1+k]=path[j-k];
             path[j-k]=tmp;
         }
-/*
-        int evalNew = eval;
-        evalNew -= dist2(path[i], path[i+1]);
-        evalNew -= dist2(path[j], path[j+1]);
-        evalNew += dist2(path[i], path[j]);
-        evalNew += dist2(path[i+1], path[j+1]);
 
-        return evalNew;*/
     }
 
-    int dist2(int i0, int i1) {
-            Point p0 = points[i0];
-            Point p1 = points[i1];
-            int dx = p0.x-p1.x;
-            int dy = p0.y-p1.y;
-            return dx*dx+dy*dy;
-    }
 
     float eval() {
         float r=0;
         for(int i=0; i<path.length-1; i++) {
-            //r += dist2(path[i], path[i+1]);
             r += distTable[path[i]][path[i+1]];
         }
         return r;
     }
 
-    void simul(long timeout) {
+    void simul(double T, double K, int P, long timeout) {
         SplittableRandom RAND = new SplittableRandom();
-        double T=100000;
-        double K=0.9997;
-        int P = 130;
+
         long startTime = System.currentTimeMillis();
         eval = eval();
         besteval = eval;
@@ -72,17 +78,14 @@ class Player {
         while(System.currentTimeMillis() - startTime < timeout) {
             
             for(int p=0; p<P; p++) {
-                int i = RAND.nextInt(points.length);
-                int j = (i+2+RAND.nextInt(points.length-3))%points.length;
-                if(i>j) {
-                    int t=i;
-                    i=j;
-                    j=t;
-                }
+                //choose 2 points for k-opt
+                int i = RAND.nextInt(points.length-4+1);
+                int j = (i+2+RAND.nextInt(points.length-i-2));
 
-                move(i,j);
-                float evalNew = eval();
-
+                
+                float evalNew = eval + diffEval2opt(i,j);
+                move2opt(i,j);
+                
                 if(evalNew < eval || RAND.nextDouble() < Math.exp(-(evalNew-eval)/T)) {
                     eval = evalNew;
                     if(eval<besteval) {
@@ -122,7 +125,7 @@ class Player {
 
 
         Player p = new Player(points, path);
-        p.simul(4800);
+        p.simul(1000000, 0.9999, 150, 4900);
 
 
         System.out.println(Arrays.stream(p.bestpath)

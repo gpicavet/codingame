@@ -88,13 +88,15 @@ class Player {
                 
                 if(evalNew < eval || RAND.nextDouble() < Math.exp(-(evalNew-eval)/T)) {
                     eval = evalNew;
+                    //keep best eval ever
                     if(eval<besteval) {
                         besteval = eval;
                         System.arraycopy(path, 0, bestpath, 0, path.length);
                     }
                     
                 } else {
-                    move(i,j);
+                    //revert by redoing move
+                    move2opt(i,j);
                 }
 
                 iter++;
